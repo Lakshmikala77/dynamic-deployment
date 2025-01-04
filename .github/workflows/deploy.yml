@@ -19,15 +19,15 @@ jobs:
         PR_BODY=$(jq -r '.pull_request.body' "$GITHUB_EVENT_PATH")
         echo "Pull Request Body: $PR_BODY"
 
-        # Detect environment
-        ENVIRONMENT=$(echo "$PR_BODY" | awk '/- \[ x \]/ {print $NF}')
-        echo "Environment: $ENVIRONMENT"
+        # Detect environment using a more robust pattern
+        ENVIRONMENT=$(echo "$PR_BODY" | grep -Po '(?<=- \[x\] ).*')
+        echo "Detected Environment: $ENVIRONMENT"
 
-        # Extract image values based on environment
+        # Extract image values dynamically for the detected environment
         if [[ "$ENVIRONMENT" == "Dev" ]]; then
-          AP_IMAGE=$(echo "$PR_BODY" | awk '/\*\*AP Region:\*\*/ {getline; print $NF}')
-          EU_IMAGE=$(echo "$PR_BODY" | awk '/\*\*EU Region:\*\*/ {getline; print $NF}')
-          US_IMAGE=$(echo "$PR_BODY" | awk '/\*\*US Region:\*\*/ {getline; print $NF}')
+          AP_IMAGE=$(echo "$PR_BODY" | grep -Po '(?<=- \*\*AP Region:\*\*\n  - Image: ).*')
+          EU_IMAGE=$(echo "$PR_BODY" | grep -Po '(?<=- \*\*EU Region:\*\*\n  - Image: ).*')
+          US_IMAGE=$(echo "$PR_BODY" | grep -Po '(?<=- \*\*US Region:\*\*\n  - Image: ).*')
         else
           echo "Environment '$ENVIRONMENT' is not supported."
           exit 1
@@ -44,14 +44,14 @@ jobs:
           exit 1
         fi
 
-        # Export to environment variabless
+        # Export to environment variables
         echo "AP_IMAGE=$AP_IMAGE" >> $GITHUB_ENV
         echo "EU_IMAGE=$EU_IMAGE" >> $GITHUB_ENV
         echo "US_IMAGE=$US_IMAGE" >> $GITHUB_ENV
 
     - name: Display Deployment Values
       run: |
-        echo "Deploying for Environment: ${{ env.ENVIRONMENT }}"
+        echo "Deploying for Environment: ${{ steps.extract.outputs.ENVIRONMENT }}"
         echo "AP Region Image: ${{ env.AP_IMAGE }}"
         echo "EU Region Image: ${{ env.EU_IMAGE }}"
         echo "US Region Image: ${{ env.US_IMAGE }}"
