@@ -1,0 +1,57 @@
+name: Deployment Workflow
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Extract values from Pull Request
+      id: extract
+      run: |
+        # Extract pull request body
+        PR_BODY=$(jq -r '.pull_request.body' "$GITHUB_EVENT_PATH")
+        echo "Pull Request Body: $PR_BODY"
+
+        # Detect environment
+        ENVIRONMENT=$(echo "$PR_BODY" | awk '/- \[ x \]/ {print $NF}')
+        echo "Environment: $ENVIRONMENT"
+
+        # Extract image values based on environment
+        if [[ "$ENVIRONMENT" == "Dev" ]]; then
+          AP_IMAGE=$(echo "$PR_BODY" | awk '/\*\*AP Region:\*\*/ {getline; print $NF}')
+          EU_IMAGE=$(echo "$PR_BODY" | awk '/\*\*EU Region:\*\*/ {getline; print $NF}')
+          US_IMAGE=$(echo "$PR_BODY" | awk '/\*\*US Region:\*\*/ {getline; print $NF}')
+        else
+          echo "Environment '$ENVIRONMENT' is not supported."
+          exit 1
+        fi
+
+        # Print extracted values
+        echo "AP Image: $AP_IMAGE"
+        echo "EU Image: $EU_IMAGE"
+        echo "US Image: $US_IMAGE"
+
+        # Fail if any value is missing
+        if [[ -z "$AP_IMAGE" || -z "$EU_IMAGE" || -z "$US_IMAGE" ]]; then
+          echo "Error: Missing image tags for one or more regions."
+          exit 1
+        fi
+
+        # Export to environment variables
+        echo "AP_IMAGE=$AP_IMAGE" >> $GITHUB_ENV
+        echo "EU_IMAGE=$EU_IMAGE" >> $GITHUB_ENV
+        echo "US_IMAGE=$US_IMAGE" >> $GITHUB_ENV
+
+    - name: Display Deployment Values
+      run: |
+        echo "Deploying for Environment: ${{ env.ENVIRONMENT }}"
+        echo "AP Region Image: ${{ env.AP_IMAGE }}"
+        echo "EU Region Image: ${{ env.EU_IMAGE }}"
+        echo "US Region Image: ${{ env.US_IMAGE }}"
