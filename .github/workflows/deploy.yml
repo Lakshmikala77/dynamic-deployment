@@ -44,7 +44,7 @@ jobs:
           exit 1
         fi
 
-        # Export to environment variables
+        # Export to environment variabless
         echo "AP_IMAGE=$AP_IMAGE" >> $GITHUB_ENV
         echo "EU_IMAGE=$EU_IMAGE" >> $GITHUB_ENV
         echo "US_IMAGE=$US_IMAGE" >> $GITHUB_ENV
